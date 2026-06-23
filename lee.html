@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ricardito Lee</title>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f0f8ff;
+            font-family: 'Nunito', sans-serif;
+            overflow: hidden;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        #app {
+            text-align: center;
+            width: 100%;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .main-char {
+            font-size: 15rem;
+            font-weight: 900;
+            color: #ff4500;
+            transition: transform 0.2s;
+            line-height: 1.2;
+        }
+
+        .examples-container {
+            display: none;
+            justify-content: space-around;
+            align-items: center;
+            margin-top: 20px;
+        }
+
+        .example-item {
+            text-align: center;
+        }
+
+        .emoji {
+            font-size: 8rem;
+            display: block;
+        }
+
+        .word {
+            font-size: 3rem;
+            color: #2e8b57;
+            text-transform: capitalize;
+            font-weight: 700;
+        }
+
+        .instructions {
+            position: fixed;
+            bottom: 20px;
+            width: 100%;
+            color: #888;
+            font-size: 1.2rem;
+            text-align: center;
+            font-weight: 700;
+        }
+    </style>
+</head>
+<body>
+
+<div id="app">
+    <div id="display" class="main-char">?</div>
+    
+    <div id="examples" class="examples-container">
+        <div class="example-item">
+            <span id="emoji1" class="emoji"></span>
+            <span id="word1" class="word"></span>
+        </div>
+        <div class="example-item">
+            <span id="emoji2" class="emoji"></span>
+            <span id="word2" class="word"></span>
+        </div>
+    </div>
+</div>
+
+<div class="instructions">Tryk på skærmen for at starte!</div>
+
+<script>
+    const data = {
+        // Letters A-Å
+        'A': { words: ['Abe', 'Appelsin'], emojis: ['🐒', '🍊'] },
+        'B': { words: ['Bil', 'Bold'], emojis: ['🚗', '⚽'] },
+        'C': { words: ['Cykel', 'Citron'], emojis: ['🚲', '🍋'] },
+        'D': { words: ['Delfin', 'Drage'], emojis: ['🐬', '🪁'] },
+        'E': { words: ['Elefant', 'Egern'], emojis: ['🐘', '🐿️'] },
+        'F': { words: ['Fisk', 'Flyvemaskine'], emojis: ['🐟', '✈️'] },
+        'G': { words: ['Gave', 'Gulerod'], emojis: ['🎁', '🥕'] },
+        'H': { words: ['Hus', 'Hest'], emojis: ['🏠', '🐎'] },
+        'I': { words: ['Is', 'Ild'], emojis: ['🍦', '🔥'] },
+        'J': { words: ['Jordbær', 'Julemand'], emojis: ['🍓', '🎅'] },
+        'K': { words: ['Kat', 'Kage'], emojis: ['🐱', '🍰'] },
+        'L': { words: ['Løve', 'Lampe'], emojis: ['🦁', '💡'] },
+        'M': { words: ['Mus', 'Måne'], emojis: ['🐭', '🌙'] },
+        'N': { words: ['Næsehorn', 'Nøgle'], emojis: ['🦏', '🔑'] },
+        'O': { words: ['Ost', 'Orm'], emojis: ['🧀', '🐛'] },
+        'P': { words: ['Panda', 'Pære'], emojis: ['🐼', '🍐'] },
+        'Q': { words: ['Quiz', 'Quetzal'], emojis: ['❓', '🦜'] },
+        'R': { words: ['Ræv', 'Robot'], emojis: ['🦊', '🤖'] },
+        'S': { words: ['Sol', 'Slange'], emojis: ['☀️', '🐍'] },
+        'T': { words: ['Tog', 'Tromme'], emojis: ['🚂', '🥁'] },
+        'U': { words: ['Ugle', 'Ur'], emojis: ['🦉', '⌚'] },
+        'V': { words: ['Vand', 'Vulkan'], emojis: ['💧', '🌋'] },
+        'W': { words: ['Wagon', 'Waffel'], emojis: ['🚃', '🧇'] },
+        'X': { words: ['Xylofon', 'X-ray'], emojis: ['🎹', '🦴'] },
+        'Y': { words: ['Yacht', 'Yoyo'], emojis: ['⛵', '🪀'] },
+        'Z': { words: ['Zebra', 'Zoo'], emojis: ['🦓', '🦒'] },
+        'Æ': { words: ['Æble', 'Ælling'], emojis: ['🍎', '🐥'] },
+        'Ø': { words: ['Øje', 'Øre'], emojis: ['👁️', '👂'] },
+        'Å': { words: ['Ål', 'År'], emojis: ['🐍', '📅'] }
+    };
+
+    const keys = Object.keys(data);
+    let appState = 'START'; // START, SHOW_CHAR, SHOW_EXAMPLES
+    let currentChar = '';
+
+    const displayEl = document.getElementById('display');
+    const examplesEl = document.getElementById('examples');
+    const emoji1El = document.getElementById('emoji1');
+    const word1El = document.getElementById('word1');
+    const emoji2El = document.getElementById('emoji2');
+    const word2El = document.getElementById('word2');
+
+    function speak(text) {
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'da-DK';
+        window.speechSynthesis.speak(utterance);        
+    }
+
+    function nextStep() {
+        if (appState === 'START' || appState === 'SHOW_EXAMPLES') {
+            // Restauramos el tamaño de fuente grande para las letras individuales
+            displayEl.style.fontSize = '15rem';
+            
+            // Obtenemos una letra aleatoria del diccionario
+            let randomKey = keys[Math.floor(Math.random() * keys.length)];
+            
+            // 50% de probabilidad de convertirla en minúscula
+            currentChar = Math.random() > 0.5 ? randomKey : randomKey.toLowerCase();
+            
+            displayEl.innerText = currentChar;
+            displayEl.style.display = 'block';
+            examplesEl.style.display = 'none';
+            appState = 'SHOW_CHAR';
+        } else if (appState === 'SHOW_CHAR') {
+            const item = data[currentChar.toUpperCase()];
+            
+            // Speak the character
+            speak(item.sound || currentChar.toLowerCase());
+
+            // Set content
+            emoji1El.innerText = item.emojis[0];
+            word1El.innerText = item.words[0];
+            
+            if (item.words[1]) {
+                emoji2El.innerText = item.emojis[1];
+                word2El.innerText = item.words[1];
+                document.querySelectorAll('.example-item')[1].style.visibility = 'visible';
+            } else {
+                document.querySelectorAll('.example-item')[1].style.visibility = 'hidden';
+            }
+
+            displayEl.style.display = 'none';
+            examplesEl.style.display = 'flex';
+            appState = 'SHOW_EXAMPLES';
+        }
+    }
+
+    document.body.addEventListener('click', nextStep);
+    
+    // Configuración inicial con el nuevo saludo (ajustando el tamaño para que quepa bien)
+    displayEl.innerText = "Bienvenido Ricardo Thor!";
+    displayEl.style.fontSize = "4.5rem"; 
+</script>
+
+</body>
+</html>
