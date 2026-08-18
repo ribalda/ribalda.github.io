@@ -58,8 +58,14 @@
             border-radius: 24px;
             padding: 24px 12px;
             box-shadow: 0 8px 24px rgba(0, 0, 0, 0.07);
-            transition: transform 0.2s, box-shadow 0.2s;
+            transition: transform 0.2s, box-shadow 0.2s, background-color 0.2s, border-color 0.2s;
             cursor: pointer;
+            min-height: 150px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border: 2px dashed #b2dfdb;
         }
 
         .example-item:hover {
@@ -67,11 +73,26 @@
             box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
         }
 
+        .example-item.revealed {
+            border: 2px solid transparent;
+            background: #ffffff;
+        }
+
         .emoji {
             font-size: clamp(3.5rem, 6.5vw, 6rem);
             display: block;
             margin-bottom: 12px;
             line-height: 1.1;
+            min-height: 1.1em;
+            opacity: 0;
+            transform: scale(0.3);
+            transition: opacity 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            user-select: none;
+        }
+
+        .example-item.revealed .emoji {
+            opacity: 1;
+            transform: scale(1);
         }
 
         .word {
@@ -83,6 +104,16 @@
             word-break: break-word;
         }
 
+        @keyframes wiggle {
+            0%, 100% { transform: rotate(0deg); }
+            25% { transform: rotate(-4deg) scale(1.04); }
+            75% { transform: rotate(4deg) scale(1.04); }
+        }
+
+        .wiggle {
+            animation: wiggle 0.3s ease-in-out;
+        }
+
         .instructions {
             position: fixed;
             bottom: 20px;
@@ -92,6 +123,7 @@
             text-align: center;
             font-weight: 700;
             pointer-events: none;
+            transition: color 0.3s ease;
         }
 
         @media (max-width: 850px) {
@@ -185,8 +217,16 @@
         { text: "Godt gået! Du er en ægte superhelt!", emoji: "🦸‍♂️" }
     ];
 
+    const funnyMessages = [
+        { text: "Mama huele a pedo", speakText: "mamá huele a pedo", emoji: "💩" },
+        { text: "Papa es calvo", speakText: "papá es calvo", emoji: "👨‍🦲" },
+        { text: "Violeta tiene el pelo feo", speakText: "Violeta tiene el pelo feo", emoji: "👧" },
+        { text: "Ricardito es un enano", speakText: "Ricardito es un enano", emoji: "👶" }
+    ];
+
     const displayEl = document.getElementById('display');
     const examplesEl = document.getElementById('examples');
+    const instructionsEl = document.querySelector('.instructions');
     const emojiEls = [
         document.getElementById('emoji1'),
         document.getElementById('emoji2'),
@@ -223,6 +263,10 @@
         displayEl.innerText = currentChar;
         displayEl.style.display = 'block';
         examplesEl.style.display = 'none';
+        if (instructionsEl) {
+            instructionsEl.innerText = "Tryk for at se ordene!";
+            instructionsEl.style.color = "#888";
+        }
         appState = 'SHOW_CHAR';
     }
 
@@ -230,18 +274,39 @@
         if (appState === 'START' || appState === 'SHOW_ENCOURAGEMENT') {
             showLetter();
         } else if (appState === 'SHOW_EXAMPLES') {
-            // Check if 101 easter egg milestone is reached
-            if (roundsCount > 0 && roundsCount % 101 === 0) {
-                displayEl.innerHTML = '<div style="font-size: clamp(4.5rem, 12vw, 8rem); margin-bottom: 15px;">💩</div><div style="color: #795548; line-height: 1.3;">mama huele a pedo</div>';
+            // Check if all cards have been uncovered
+            const unrevealed = Array.from(exampleItems).filter(el => el.style.display !== 'none' && !el.classList.contains('revealed'));
+            if (unrevealed.length > 0) {
+                // Wiggle unrevealed cards to guide the child
+                unrevealed.forEach(el => {
+                    el.classList.add('wiggle');
+                    setTimeout(() => el.classList.remove('wiggle'), 300);
+                });
+                if (instructionsEl) {
+                    instructionsEl.innerText = "Åbn alle ordene først! 👆";
+                    instructionsEl.style.color = "#ff4500";
+                    setTimeout(() => {
+                        instructionsEl.innerText = "Tryk på alle ordene for at fortsætte! 👆";
+                        instructionsEl.style.color = "#888";
+                    }, 1200);
+                }
+                return;
+            }
+
+            // 5% random chance on every turn to show a funny message
+            if (Math.random() < 0.05) {
+                const funny = funnyMessages[Math.floor(Math.random() * funnyMessages.length)];
+
+                displayEl.innerHTML = '<div style="font-size: clamp(4.5rem, 12vw, 8rem); margin-bottom: 15px;">' + funny.emoji + '</div><div style="color: #795548; line-height: 1.3;">' + funny.text + '</div>';
                 displayEl.style.fontFamily = "'Nunito', sans-serif";
                 displayEl.style.fontSize = "clamp(2rem, 5.5vw, 3.6rem)";
                 displayEl.style.display = 'block';
                 examplesEl.style.display = 'none';
 
-                speak('mamá huele a pedo', 'es-ES');
+                speak(funny.speakText, 'es-ES');
                 appState = 'SHOW_ENCOURAGEMENT';
-            // Check if 20 letters/rounds milestone is reached
-            } else if (roundsCount > 0 && roundsCount % 20 === 0) {
+            // Check if 10 letters/rounds milestone is reached
+            } else if (roundsCount > 0 && roundsCount % 10 === 0) {
                 const msg = encouragementMessages[encouragementIndex % encouragementMessages.length];
                 encouragementIndex++;
 
@@ -278,7 +343,8 @@
                 if (pairs[i]) {
                     emojiEls[i].innerText = pairs[i].emoji;
                     wordEls[i].innerText = pairs[i].word;
-                    exampleItems[i].style.display = 'block';
+                    exampleItems[i].classList.remove('revealed');
+                    exampleItems[i].style.display = 'flex';
                 } else {
                     exampleItems[i].style.display = 'none';
                 }
@@ -289,6 +355,10 @@
 
             displayEl.style.display = 'none';
             examplesEl.style.display = 'grid';
+            if (instructionsEl) {
+                instructionsEl.innerText = "Tryk på alle ordene for at fortsætte! 👆";
+                instructionsEl.style.color = "#888";
+            }
             appState = 'SHOW_EXAMPLES';
         }
     }
@@ -296,10 +366,11 @@
     // Tap/Click background to advance
     document.body.addEventListener('click', nextStep);
 
-    // Tap individual word card to hear it pronounced
+    // Tap individual word card to reveal the emoji and hear it pronounced
     exampleItems.forEach((itemEl, idx) => {
         itemEl.addEventListener('click', (e) => {
             e.stopPropagation();
+            itemEl.classList.add('revealed');
             const text = wordEls[idx].innerText;
             if (text) {
                 speak(text);
@@ -308,9 +379,16 @@
                     itemEl.style.transform = '';
                 }, 250);
             }
+
+            // Check if all cards are now revealed
+            const unrevealed = Array.from(exampleItems).filter(el => el.style.display !== 'none' && !el.classList.contains('revealed'));
+            if (unrevealed.length === 0 && instructionsEl) {
+                instructionsEl.innerText = "Flot! Tryk på skærmen for næste bogstav! ➡️";
+                instructionsEl.style.color = "#2e8b57";
+            }
         });
     });
-    
+
     // Initial welcome screen
     displayEl.innerText = "Bienvenido Ricardo Thor!";
     displayEl.style.fontFamily = "'Nunito', sans-serif";
